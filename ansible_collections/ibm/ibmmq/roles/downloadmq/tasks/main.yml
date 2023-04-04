@@ -1,11 +1,20 @@
 ---
 
-- name: Download MQ Advanced for Developers
+- name: Download MQ Advanced for Developers on SUSE
+  get_url:
+    url: "https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqadv/mqadv_dev{{ version }}_linux_x86-64.tar.gz"
+    dest: /tmp/mq.tar.gz
+    force: no
+  tags: download
+  when: ansible_distribution == "SLES"
+
+- name: Download MQ Advanced for Developers on Ubuntu
   get_url:
     url: "https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqadv/mqadv_dev{{ version }}_ubuntu_x86-64.tar.gz"
     dest: /tmp/mq.tar.gz
     force: no
   tags: download
+  when: ansible_distribution == "Ubuntu"
 
 - name: Extract MQ fom TAR
   unarchive:

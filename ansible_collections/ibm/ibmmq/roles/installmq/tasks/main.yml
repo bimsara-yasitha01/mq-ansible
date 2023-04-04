@@ -10,36 +10,47 @@
     /tmp/MQServer/mqlicense.sh -{{ ibmMqLicence}} > /tmp/MQServer/licensestatus.txt
   changed_when: not license_status.stat.exists
 
-- name: Check if MQ is installed
-  shell: apt list | grep ibmmq
+- name: Check if MQ is installed on SUSE
+  shell: rpm -qa | grep MQSeries
   register: installed_mq_packages
   failed_when:
-    - "'FAIL' in installed_mq_packages.stderr"
+    - installed_mq_packages.stderr != ""
+  
+- name: Install MQ on SUSE
+  shell: rpm -Uvh /tmp/MQServer/MQSeries*.rpm
+  when: 'installed_mq_packages.stdout | string is not search("MQSeries")'
 
-- name: Create list file and run apt update again to update the apt cache
-  shell: |
-    MQ_PACKAGES_LOCATION=/tmp/MQServer
-    echo "deb [trusted=yes] file:$MQ_PACKAGES_LOCATION /" > /etc/apt/sources.list.d/mq-install.list
-    apt-get update
-  changed_when: 'installed_mq_packages.stdout_lines | string is not search("ibmmq")'
 
-- name: Install MQ Server
-  shell: apt-get install -y "ibmmq-*"
-  changed_when: 'installed_mq_packages.stdout_lines | string is not search("ibmmq")'
+# - name: Check if MQ is installed
+#   shell: apt list | grep ibmmq
+#   register: installed_mq_packages
+#   failed_when:
+#     - "'FAIL' in installed_mq_packages.stderr"
 
-- name: Delete .list file and run apt update again to clear the apt cache
-  shell: |
-    rm /etc/apt/sources.list.d/mq-install.list
-    apt-get update
-  changed_when: 'installed_mq_packages.stdout_lines | string is not search("ibmmq")'
+# - name: Create list file and run apt update again to update the apt cache
+#   shell: |
+#     MQ_PACKAGES_LOCATION=/tmp/MQServer
+#     echo "deb [trusted=yes] file:$MQ_PACKAGES_LOCATION /" > /etc/apt/sources.list.d/mq-install.list
+#     apt-get update
+#   changed_when: 'installed_mq_packages.stdout_lines | string is not search("ibmmq")'
 
-- name: Install acl
-  apt:
-    state: latest
-    update_cache: true
-    pkg:
-      - acl
-  when: ansible_facts['distribution']=="Ubuntu"
+# - name: Install MQ Server
+#   shell: apt-get install -y "ibmmq-*"
+#   changed_when: 'installed_mq_packages.stdout_lines | string is not search("ibmmq")'
+
+# - name: Delete .list file and run apt update again to clear the apt cache
+#   shell: |
+#     rm /etc/apt/sources.list.d/mq-install.list
+#     apt-get update
+#   changed_when: 'installed_mq_packages.stdout_lines | string is not search("ibmmq")'
+
+# - name: Install acl
+#   apt:
+#     state: latest
+#     update_cache: true
+#     pkg:
+#       - acl
+#   when: ansible_facts['distribution']=="Ubuntu"
 
 - name: reset ssh connection
   meta: reset_connection

@@ -32,4 +32,4 @@
         - 'QM1'
         - 'QM2'
         state: 'running'
-        mqsc_file: '/var/mqm/dev-config.mqsc'
+        mqsc_file: '/tmp/dev-config.mqsc'
