@@ -11,7 +11,7 @@
         appGid: 909
         mqmHome: /home/mqm
         mqmProfile: .profile
-    - role: downloadmq
+    - role: downloadmq-x86-64
       vars:
         version: 930
-    - installmq
+    - installmq-suse

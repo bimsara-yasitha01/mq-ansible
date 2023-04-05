@@ -1,0 +1,21 @@
+---
+
+- name: Check if license status file exists
+  stat:
+    path: /tmp/MQServer/licensestatus.txt
+  register: license_status
+
+- name: Accept MQ license
+  shell: |
+    /tmp/MQServer/mqlicense.sh -{{ ibmMqLicence}} > /tmp/MQServer/licensestatus.txt
+  changed_when: not license_status.stat.exists
+
+- name: Check if MQ is installed on SUSE
+  shell: rpm -qa | grep MQSeries
+  register: installed_mq_packages
+  failed_when:
+    - installed_mq_packages.stderr != ""
+  
+- name: Install MQ on SUSE
+  shell: rpm -Uvh /tmp/MQServer/MQSeries*.rpm
+  when: 'installed_mq_packages.stdout | string is not search("MQSeries")'
