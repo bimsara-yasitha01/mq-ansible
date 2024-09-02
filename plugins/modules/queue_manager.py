@@ -16,7 +16,6 @@
 
 from ansible.module_utils.basic import AnsibleModule
 import os.path
-import re
 
 result = dict(
     rc=0,
@@ -38,7 +37,19 @@ def check_status_queue_managers(qmname, module):
 
 def state_present(qmname, module):
     if module.params['unit_test'] is False:
-        rc, stdout, stderr = module.run_command(['crtmqm', qmname])
+
+        log_file_params = []
+
+        if module.params['log_file_pages'] is not None:
+            log_file_params = log_file_params + ["-lf", module.params['log_file_pages']]
+        
+        if module.params['log_primary_files'] is not None:
+            log_file_params = log_file_params + ["-lp", module.params['log_primary_files']]
+
+        if module.params['log_secondary_files'] is not None:
+            log_file_params = log_file_params + ["-ls", module.params['log_secondary_files']]
+
+        rc, stdout, stderr = module.run_command(["runmqsc", qmname] + log_file_params)
         result['rc'] = rc
 
         if module.params['mqsc_file'] is not None:
@@ -46,14 +57,11 @@ def state_present(qmname, module):
 
         if rc == 0:
             result['rc'] = rc
-            result['msg'] = 'IBM MQ Queue Manager Created'
+            result['msg'] = 'IBM MQ Queue Manager Created' + result['msg']
             result['state'] = 'present'
         elif rc == 8:
-            result['rc'] = 0
-            result['msg'] = 'IBM MQ Queue Manager already exists. ' + result['msg']
-            result['state'] = 'present'
+            module.exit_json(skipped=True, state='present', msg='IBM MQ Queue Manager already exists. '+result['msg'])
         elif rc > 0:
-            # Critical Error
             module.fail_json(**result)
 
 def run_mqsc_file(qmname, module):
@@ -95,7 +103,6 @@ def state_running(qmname, module):
             # QMGR does not exist Create then set running
             rc, stdout, stderr = module.run_command(['crtmqm', qmname])
             if rc > 0:
-                # Critical Error
                 module.fail_json(**result)
             
         rc, stdout, stderr = module.run_command(['strmqm', qmname])
@@ -104,9 +111,7 @@ def state_running(qmname, module):
             
 
         if rc == 5 and module.params['mqsc_file'] is None:
-            result['rc'] = 0
-            result['msg'] = 'IBM MQ queue manager running'
-            result['state'] = 'running'
+            module.exit_json(skipped=True, state='running', msg='IBM MQ queue manager running')
         elif rc == 5 and module.params['mqsc_file']:
             run_mqsc_file(qmname, module)
         elif rc == 0: 
@@ -117,8 +122,8 @@ def state_running(qmname, module):
             if module.params['mqsc_file']:
                 run_mqsc_file(qmname, module)
             
+            module.exit_json(rc=result['rc'], state=result['state'], msg=result['msg'])
         else:
-            # Critical Error
             module.fail_json(**result)
 
 def state_stopped(qmname, module):
@@ -134,14 +139,12 @@ def state_stopped(qmname, module):
             result['state'] = 'absent'
             module.fail_json(**result)
         elif rc == 40:
-            result['rc'] = 0
-            result['msg'] = stdout + stderr
-            result['state'] = 'present'
+            module.exit_json(skipped=True, state='present', msg = stdout + stderr)
         elif rc == 0:
             result['rc'] = rc
             result['state'] = 'stopped'
+            module.exit_json(**result)
         elif rc > 0:
-            # Critical Error
             module.fail_json(**result)
         else:
             result['rc'] = rc
@@ -159,17 +162,13 @@ def state_absent(qmname, module):
         
         if rc == 0:
             result['msg'] = 'IBM MQ queue manager \'' + str(qmname) + '\' deleted.'
+            module.exit_json(**result)
         elif rc == 5:
-            result['rc'] = 0
-            result['msg'] = 'IBM MQ queue manager running.'
-            result['state'] = 'running'
+            module.exit_json(skipped=True, state='running', msg='IBM MQ queue manager running.')
         elif rc == 16:
             # Queue Manager does not exist
-            result['rc'] = 0
-            result['msg'] = 'AMQ8118E: IBM MQ queue manager does not exist.'
-            result['state'] = 'absent'
+            module.exit_json(skipped=True, state='absent', msg='AMQ8118E: IBM MQ queue manager does not exist.')
         else:
-            # Critical Error
             module.fail_json(**result)
 
 def state_invalid(qmname, module):
@@ -185,16 +184,15 @@ def main():
         state=dict(type='str', required=True),
         description=dict(type='str', required=False),
         unit_test=dict(type='bool', default=False, required=False),
-        mqsc_file=dict(type='str', required=False)
+        mqsc_file=dict(type='str', required=False),
+        log_file_pages=dict(type='int', required=False),
+        log_primary_files=dict(type='int', required=False),
+        log_secondary_files=dict(type='int', required=False)
     )
 
     module = AnsibleModule(
         argument_spec=qmgr_attributes
     )
-
-    if module.params['qmname'][0] == "ALL_QMGRS":
-        module.params['qmname'] = re.findall("(?<=QMNAME\()([^\)]*)", module.run_command(['dspmq'])[1])
-        result['qmlists'] = re.findall("(?<=QMNAME\()([^\)]*)", module.run_command(['dspmq'])[1])
 
     ops = {
         "present": state_present,
