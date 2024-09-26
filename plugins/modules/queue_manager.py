@@ -16,6 +16,7 @@
 
 from ansible.module_utils.basic import AnsibleModule
 import os.path
+import re
 
 result = dict(
     rc=0,
@@ -192,6 +193,11 @@ def main():
     module = AnsibleModule(
         argument_spec=qmgr_attributes
     )
+
+
+    if module.params['qmname'][0] == "ALL_QMGRS":
+        module.params['qmname'] = re.findall("(?<=QMNAME\()([^\)]*)", module.run_command(['dspmq'])[1])
+        result['qmlists'] = re.findall("(?<=QMNAME\()([^\)]*)", module.run_command(['dspmq'])[1])
 
     ops = {
         "present": state_present,
