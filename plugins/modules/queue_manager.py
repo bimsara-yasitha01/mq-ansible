@@ -151,7 +151,6 @@ def state_stopped(qmname, module):
             result['state'] = 'present'
 
 def state_absent(qmname, module):
-    # result['msg'] = 'IBM MQ queue manager deleted.'
     
     if module.params['unit_test'] is False:
         
